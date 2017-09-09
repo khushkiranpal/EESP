@@ -130,33 +130,31 @@ public class ScheduleRMS_EASS {
        	   //	total_no_tasks=total_no_tasks+ tasks.size();
     	prioritize(taskset);
     
-    	    
+    	boolean schedulability;    
     	ParameterSetting ps = new ParameterSetting();
-    	double set_fq = frequency.SysClockF(taskset), fq = 0;
-  
+    	double set_fq = frequency.SysClockF(taskset), fq = 1;
+    	boolean unschedulable = false;
+    	schedulability = schedule.worstCaseResp_TDA_RMS(taskset);
+    	System.out.println("on  one processor   "+schedulability+"  at fq "+fq);
     //	fq=set_fq;
     	fq= Math.max(U_SUM, 0.42);
+    	ps.set_freq(taskset,Double.valueOf(twoDecimals.format(fq)));   // set frequency
     	System.out.println("frequency   " +fq+" usum  "+U_SUM);
-    	ps.set_freq(taskset,Double.valueOf(twoDecimals.format(fq)));
-    	
-    	boolean schedulability = schedule.worstCaseResp_TDA_RMS(taskset);//, fq);
-    	  System.out.println(schedulability);
-   /*
-    	while(!schedulability)
-       {
-    	
-    	
-         fq=fq+0.01;
+    	schedulability = schedule.worstCaseResp_TDA_RMS(taskset);//, fq);
+  	  System.out.println("on  one processor   "+schedulability+"  at fq "+fq);
 
-  	   System.out.println("frequency   " +fq);
-     	ps.set_freq(taskset,Double.valueOf(twoDecimals.format(fq)));
-        
-    	   schedulability = schedule.worstCaseResp_TDA_RMS(taskset, fq);   
-    	   System.out.println(schedulability);
-        
-       }
-    	 
-    	*/
+    	
+  	  do{
+    	
+    		for(Processor pMin : freeProcList)
+    		{
+        		
+    			pMin.taskset.clear();
+    			pMin.setWorkload(0);
+        		System.out.println("processor   "+pMin.getId()+"   size  "+pMin.taskset.size()+"  w  "+pMin.getWorkload());
+    		}    		
+    	
+    
     	ps.setResponseTime(taskset);    
     	ps.setPromotionTime(taskset);       //SET PROMOTION TIMES
     	ps.setBCET(taskset, 0.5);
@@ -164,11 +162,13 @@ public class ScheduleRMS_EASS {
     	
     		//ALLOCATION OF PRIMARIES
     	
+    	
+    	
     	for(ITask t : taskset)
     	{
     		double u = Double.valueOf(twoDecimals.format(((double)t.getWcet()/(double)t.getDeadline()))), work=1;
     		Processor minP=null;
-    		System.out.println(" u  "+u);
+    	//	System.out.println(" u  "+u);
     		
     		for(Processor pMin : freeProcList)
     		{
@@ -177,7 +177,7 @@ public class ScheduleRMS_EASS {
     				work=Double.valueOf(twoDecimals.format(pMin.getWorkload()));
     				minP = pMin;
     			}
-    			System.out.println("work   "+work+"  minP  "+minP.getId()+ "  pMin  "+pMin.getId());
+    		//	System.out.println("work   "+work+"  minP  "+minP.getId()+ "  pMin  "+pMin.getId());
         		
     		}
     		t.setPrimary(true);
@@ -186,18 +186,14 @@ public class ScheduleRMS_EASS {
     		t.setP(minP);
     		
     	}
-    	for(Processor pMin : freeProcList)
-		{
-    		
-    		System.out.println("processor   "+pMin.getId()+"   size  "+pMin.taskset.size()+"  w  "+pMin.getWorkload());
-		}
+    	
     	
     	for(ITask t : taskset)
     	{
     		double u = Double.valueOf(twoDecimals.format(((double)t.getC()/(double)t.getD()))), work=1;
     		ITask backup;
     		Processor minP=null;
-    		System.out.println(" u backup  "+u);
+    	//	System.out.println(" u backup  "+u);
     		for(Processor pMin : freeProcList)
     		{
     			if (pMin == t.getP())
@@ -207,7 +203,7 @@ public class ScheduleRMS_EASS {
     				work=Double.valueOf(twoDecimals.format(pMin.getWorkload()));
     				minP = pMin;
     			}
-    			System.out.println("work   "+work+"  minP  "+minP.getId()+ "  pMin  "+pMin.getId());
+    		//	System.out.println("work   "+work+"  minP  "+minP.getId()+ "  pMin  "+pMin.getId());
         		
     		}
     		backup = t.cloneTask();
@@ -219,16 +215,34 @@ public class ScheduleRMS_EASS {
     	for(Processor pMin : freeProcList)
 		{
     		
-    		System.out.println("processor   "+pMin.getId()+"   size  "+pMin.taskset.size()+"  w  "+pMin.getWorkload());
-    		for(ITask t : pMin.taskset)
+    	//	System.out.println("processor   "+pMin.getId()+"   size  "+pMin.taskset.size()+"  w  "+pMin.getWorkload());
+    		/*for(ITask t : pMin.taskset)
     			
         	{
-    			System.out.println("task   "+t.getId()+"  u  "+ Double.valueOf(twoDecimals.format(((double)t.getWcet()/(double)t.getDeadline())))+"   primary  "+t.isPrimary()+"  Proc   "+t.getP().getId());
+    			System.out.println("task   "+t.getId()+"  u  "+ Double.valueOf(twoDecimals.format(((double)t.getWcet()/(double)t.getDeadline())))
+    			+"   primary  "+t.isPrimary()+"  Proc   "+t.getP().getId());
        
-        	}
+        	}*/
     		schedulability = schedule.worstCaseResp_TDA_RMS(pMin.taskset);
-    		System.out.println("schedulability "+schedulability);
+    		System.out.println("proc   "+pMin.getId()+"   schedulability   "+schedulability);
+    		if(schedulability==false)
+    		{
+    			unschedulable= true;
+    			fq=fq+0.01;
+    			ps.set_freq(taskset,Double.valueOf(twoDecimals.format(fq)));
+    	    	
+    		}
+    		else 
+    			unschedulable=false;
 		}
+    	System.out.println("fq  "+fq+"   unschedulable  "+unschedulable);
+
+		for(Processor pMin : freeProcList)
+		{
+    		
+			System.out.println("processor   "+pMin.getId()+"   size  "+pMin.taskset.size()+"  w  "+pMin.getWorkload());
+		}   
+    	}while( unschedulable == true);
     	
     	
     	ArrayList<Integer> fault = new ArrayList<Integer>();
